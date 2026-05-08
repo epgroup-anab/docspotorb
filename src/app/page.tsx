@@ -2,18 +2,14 @@
 
 import { useState, useCallback } from "react";
 import { useConversation } from "@elevenlabs/react";
-import { useAudioVolume } from "@/components/ui/bar-visualizer";
-import { ParticleWaveform } from "@/components/ui/particle-waveform";
+import { BarVisualizer } from "@/components/ui/bar-visualizer";
+import { ParticleOrb } from "@/components/ui/particle-orb";
 import { X } from "lucide-react";
 import { DOCSPOT_AGENT_ID } from "@/config/agent";
 
 export default function Home() {
   const [showVisualizer, setShowVisualizer] = useState(false);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
-  const microphoneVolume = useAudioVolume(mediaStream, {
-    fftSize: 64,
-    smoothingTimeConstant: 0.45,
-  });
 
   const conversation = useConversation({
     onConnect: () => {
@@ -50,71 +46,57 @@ export default function Home() {
     await conversation.endSession();
   }, [conversation]);
 
-  const callState =
-    conversation.status === "connected"
-      ? conversation.isSpeaking
-        ? "speaking"
-        : "listening"
-      : "connecting";
-  const waveformActivity =
-    callState === "speaking"
-      ? Math.max(0.62, microphoneVolume * 1.4)
-      : microphoneVolume * 2.4;
-
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8fbff] text-[#111827] font-sans overflow-hidden">
-      <main className="relative flex flex-1 flex-col items-center justify-center p-4">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(88,245,255,0.18),transparent_34%),linear-gradient(225deg,rgba(255,111,206,0.16),transparent_38%),radial-gradient(circle_at_50%_60%,rgba(14,31,88,0.08),transparent_42%)]" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-[linear-gradient(to_top,rgba(255,255,255,0.94),transparent)]" />
-
-        <div className="relative z-10 flex w-full max-w-5xl flex-col items-center gap-8">
-          <div className="text-center space-y-3 px-4">
-            <h1 className="text-4xl font-semibold tracking-normal text-gray-950 md:text-5xl">
+    <div className="min-h-screen flex flex-col bg-[#f9fafb] text-[#1f2937] font-sans overflow-hidden">
+      <main className="flex-1 flex flex-col items-center justify-center relative p-4">
+        <div className="max-w-3xl w-full flex flex-col items-center gap-8 z-10">
+          <div className="text-center space-y-2 px-4">
+            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-gray-900">
               Docspot AI
             </h1>
-            <p className="mx-auto max-w-md text-base font-normal leading-7 text-slate-500 md:text-lg">
+            <p className="text-base md:text-lg text-gray-500 font-light max-w-md mx-auto">
               Your AI assistant for dental call handling and patient support.
             </p>
           </div>
 
-          <div className="relative flex min-h-[500px] w-full items-center justify-center">
+          <div className="relative w-full min-h-[400px] flex items-center justify-center">
             {!showVisualizer ? (
-              <div className="flex flex-col items-center gap-7 py-8">
-                <div className="flex flex-col items-center gap-5">
+              <div className="flex flex-col items-center gap-8 py-8">
+                <div className="flex flex-col items-center gap-4">
                   <button
                     onClick={startConversation}
-                    className="group relative h-72 w-[min(92vw,920px)] focus:outline-none md:h-80"
+                    className="group relative w-32 h-32 md:w-40 md:h-40 rounded-full focus:outline-none transition-transform duration-500 hover:scale-105"
                     aria-label="Talk to Docspot AI"
                   >
-                    <div className="relative h-full w-full transition-transform duration-500 group-hover:scale-105 group-focus-visible:scale-105">
-                      <ParticleWaveform />
+                    <div className="absolute inset-0 rounded-full bg-violet-500 blur-2xl opacity-30 animate-pulse group-hover:opacity-50 transition-opacity duration-500"></div>
+                    <div className="relative w-full h-full rounded-full overflow-hidden border-[6px] border-white shadow-xl ring-2 ring-violet-200 bg-slate-950">
+                      <ParticleOrb />
                     </div>
                   </button>
-                  <span className="rounded-full border border-cyan-200/80 bg-white/80 px-5 py-2 text-base font-semibold text-slate-900 shadow-[0_16px_36px_rgba(15,23,42,0.10)] backdrop-blur">
-                    Talk to Docspot AI
-                  </span>
+                  <span className="text-lg font-medium text-violet-700">Talk to Docspot AI</span>
                 </div>
               </div>
             ) : (
-              <div className="flex w-full max-w-5xl flex-col items-center gap-6 animate-in fade-in zoom-in duration-500 slide-in-from-bottom-4">
-                <div className="relative h-72 w-[min(94vw,980px)] md:h-80">
-                  <div
-                    className="relative h-full w-full transition-transform duration-150"
-                    style={{
-                      transform: `scale(${1 + Math.min(waveformActivity, 1) * 0.04})`,
-                    }}
-                  >
-                    <ParticleWaveform
-                      activity={waveformActivity}
-                      mode={callState}
-                    />
-                  </div>
+              <div className="w-full max-w-md flex flex-col items-center gap-6 animate-in fade-in zoom-in duration-500 slide-in-from-bottom-4">
+                <div className="w-full bg-white/80 backdrop-blur-md rounded-2xl p-8 shadow-xl border border-red-100">
+                  <BarVisualizer
+                    state={
+                      conversation.status === "connected"
+                        ? conversation.isSpeaking
+                          ? "speaking"
+                          : "listening"
+                        : "connecting"
+                    }
+                    barCount={20}
+                    mediaStream={mediaStream}
+                    className="h-32"
+                  />
                 </div>
 
                 <div className="flex gap-4">
                   <button
                     onClick={endConversation}
-                    className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-8 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-all hover:border-cyan-200 hover:bg-cyan-50 hover:text-slate-950"
+                    className="px-8 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-full hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all shadow-sm text-sm font-medium flex items-center gap-2"
                   >
                     <X size={16} />
                     End Call with Docspot AI
@@ -134,7 +116,7 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="border-t border-slate-100 bg-white/70 py-6 text-center text-sm text-slate-400">
+      <footer className="py-6 text-center text-sm text-gray-400 border-t border-gray-100 bg-white/50">
         <p>&copy; 2026 Docspot AI. All rights reserved.</p>
       </footer>
     </div>
