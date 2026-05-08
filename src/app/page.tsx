@@ -65,11 +65,11 @@ export default function Home() {
                 <div className="flex flex-col items-center gap-4">
                   <button
                     onClick={startConversation}
-                    className="group relative w-32 h-32 md:w-40 md:h-40 rounded-full focus:outline-none transition-transform duration-500 hover:scale-105"
+                    className="group relative w-40 h-40 md:w-48 md:h-48 rounded-full focus:outline-none transition-transform duration-500 hover:scale-105"
                     aria-label="Talk to Docspot AI"
                   >
-                    <div className="absolute inset-0 rounded-full bg-violet-500 blur-2xl opacity-30 animate-pulse group-hover:opacity-50 transition-opacity duration-500"></div>
-                    <div className="relative w-full h-full rounded-full overflow-hidden border-[6px] border-white shadow-xl ring-2 ring-violet-200 bg-slate-950">
+                    <div className="absolute inset-8 rounded-full bg-cyan-300/25 blur-3xl opacity-80 animate-pulse group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div className="relative w-full h-full">
                       <ParticleOrb />
                     </div>
                   </button>
