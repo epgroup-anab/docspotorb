@@ -1,11 +1,11 @@
-# Docspot AI
+# Docspot Orb
 
-Single-agent ElevenLabs voice web app based on the SolarStyle project.
+Single-agent ElevenLabs voice web app for Docspot AI, with a 3D orb call control.
 
 ## Configure the agent
 
 1. Open `src/config/agent.ts`
-2. Replace `REPLACE_WITH_YOUR_AGENT_ID` with your ElevenLabs agent ID.
+2. Replace the exported agent ID with your ElevenLabs agent ID.
 
 ## Run locally
 
