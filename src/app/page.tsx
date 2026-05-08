@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useConversation } from "@elevenlabs/react";
-import { BarVisualizer } from "@/components/ui/bar-visualizer";
+import { useAudioVolume } from "@/components/ui/bar-visualizer";
 import { ParticleOrb } from "@/components/ui/particle-orb";
 import { X } from "lucide-react";
 import { DOCSPOT_AGENT_ID } from "@/config/agent";
@@ -10,6 +10,10 @@ import { DOCSPOT_AGENT_ID } from "@/config/agent";
 export default function Home() {
   const [showVisualizer, setShowVisualizer] = useState(false);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+  const microphoneVolume = useAudioVolume(mediaStream, {
+    fftSize: 64,
+    smoothingTimeConstant: 0.45,
+  });
 
   const conversation = useConversation({
     onConnect: () => {
@@ -45,6 +49,17 @@ export default function Home() {
   const endConversation = useCallback(async () => {
     await conversation.endSession();
   }, [conversation]);
+
+  const callState =
+    conversation.status === "connected"
+      ? conversation.isSpeaking
+        ? "speaking"
+        : "listening"
+      : "connecting";
+  const orbActivity =
+    callState === "speaking"
+      ? Math.max(0.62, microphoneVolume * 1.4)
+      : microphoneVolume * 2.4;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f8fbff] text-[#111827] font-sans overflow-hidden">
@@ -83,20 +98,23 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              <div className="w-full max-w-md flex flex-col items-center gap-6 animate-in fade-in zoom-in duration-500 slide-in-from-bottom-4">
-                <div className="w-full rounded-2xl border border-cyan-100 bg-white/80 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.14)] backdrop-blur-md">
-                  <BarVisualizer
-                    state={
-                      conversation.status === "connected"
-                        ? conversation.isSpeaking
-                          ? "speaking"
-                          : "listening"
-                        : "connecting"
-                    }
-                    barCount={20}
-                    mediaStream={mediaStream}
-                    className="h-32"
+              <div className="flex w-full max-w-md flex-col items-center gap-6 animate-in fade-in zoom-in duration-500 slide-in-from-bottom-4">
+                <div className="relative h-72 w-72 md:h-80 md:w-80">
+                  <div className="absolute inset-6 rounded-full bg-cyan-300/25 blur-3xl" />
+                  <div
+                    className="absolute inset-14 rounded-full bg-fuchsia-300/20 blur-2xl transition-transform duration-150"
+                    style={{
+                      transform: `scale(${1 + Math.min(orbActivity, 1) * 0.35})`,
+                    }}
                   />
+                  <div
+                    className="relative h-full w-full transition-transform duration-150"
+                    style={{
+                      transform: `scale(${1 + Math.min(orbActivity, 1) * 0.08})`,
+                    }}
+                  >
+                    <ParticleOrb activity={orbActivity} mode={callState} />
+                  </div>
                 </div>
 
                 <div className="flex gap-4">

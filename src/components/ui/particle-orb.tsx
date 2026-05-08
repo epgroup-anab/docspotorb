@@ -1,15 +1,40 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
-function ParticleCore() {
+type OrbMode = "idle" | "connecting" | "listening" | "speaking";
+
+type ParticleOrbProps = {
+  activity?: number;
+  className?: string;
+  mode?: OrbMode;
+};
+
+function ParticleCore({
+  activity,
+  mode,
+}: {
+  activity: number;
+  mode: OrbMode;
+}) {
   const groupRef = useRef<THREE.Group>(null);
   const coreRef =
     useRef<THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>>(null);
   const haloRef = useRef<THREE.Points>(null);
   const sparkRef = useRef<THREE.Points>(null);
+  const activityRef = useRef(activity);
+  const modeRef = useRef(mode);
+  const smoothActivityRef = useRef(activity);
+
+  useEffect(() => {
+    activityRef.current = activity;
+  }, [activity]);
+
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
 
   const shellPositions = useMemo(() => {
     const count = 2600;
@@ -53,33 +78,53 @@ function ParticleCore() {
       uFresnelColor: new THREE.Uniform(new THREE.Color("#58f5ff")),
       uCoreColor: new THREE.Uniform(new THREE.Color("#182cff")),
       uHotColor: new THREE.Uniform(new THREE.Color("#ff7adf")),
+      uActivity: new THREE.Uniform(0),
     }),
     []
   );
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
-    const pulse = 1 + Math.sin(t * 1.8) * 0.025;
+    const speakingPulse =
+      modeRef.current === "speaking" ? 0.32 + Math.sin(t * 4.2) * 0.2 : 0;
+    const connectingPulse =
+      modeRef.current === "connecting" ? 0.24 + Math.sin(t * 2.4) * 0.14 : 0;
+    const targetActivity = Math.min(
+      1,
+      Math.max(activityRef.current, speakingPulse, connectingPulse, 0.08)
+    );
+
+    smoothActivityRef.current +=
+      (targetActivity - smoothActivityRef.current) * 0.16;
+
+    const voicePulse = smoothActivityRef.current;
+    const pulse =
+      1 + Math.sin(t * 1.8) * 0.025 + voicePulse * 0.18;
 
     if (groupRef.current) {
-      groupRef.current.rotation.y = t * 0.28;
+      groupRef.current.rotation.y = t * (0.28 + voicePulse * 0.18);
       groupRef.current.rotation.x = Math.sin(t * 0.22) * 0.16;
+      groupRef.current.scale.setScalar(1 + voicePulse * 0.08);
     }
 
     if (coreRef.current) {
       coreRef.current.material.uniforms.uTime.value = t;
+      coreRef.current.material.uniforms.uActivity.value = voicePulse;
       coreRef.current.scale.setScalar(pulse);
     }
 
     if (haloRef.current) {
-      haloRef.current.rotation.y = -t * 0.18;
+      haloRef.current.rotation.y = -t * (0.18 + voicePulse * 0.2);
       haloRef.current.rotation.z = t * 0.06;
-      haloRef.current.scale.setScalar(1 + Math.sin(t * 2.2) * 0.018);
+      haloRef.current.scale.setScalar(
+        1 + Math.sin(t * 2.2) * 0.018 + voicePulse * 0.14
+      );
     }
 
     if (sparkRef.current) {
-      sparkRef.current.rotation.y = t * 0.36;
+      sparkRef.current.rotation.y = t * (0.36 + voicePulse * 0.28);
       sparkRef.current.rotation.x = -t * 0.12;
+      sparkRef.current.scale.setScalar(1 + voicePulse * 0.22);
     }
   });
 
@@ -167,7 +212,11 @@ function OrbRing({
   );
 }
 
-export function ParticleOrb({ className }: { className?: string }) {
+export function ParticleOrb({
+  activity = 0,
+  className,
+  mode = "idle",
+}: ParticleOrbProps) {
   return (
     <div className={className ?? "relative h-full w-full"}>
       <Canvas
@@ -181,7 +230,7 @@ export function ParticleOrb({ className }: { className?: string }) {
           intensity={7}
           color="#ff77d9"
         />
-        <ParticleCore />
+        <ParticleCore activity={activity} mode={mode} />
       </Canvas>
     </div>
   );
@@ -215,6 +264,7 @@ const fragmentShader = /* glsl */ `
   uniform vec3 uFresnelColor;
   uniform vec3 uCoreColor;
   uniform vec3 uHotColor;
+  uniform float uActivity;
   varying vec2 vUv;
   varying vec3 vNormal;
   varying vec3 vViewPosition;
@@ -243,13 +293,13 @@ const fragmentShader = /* glsl */ `
     plasma = smoothstep(0.52, 1.18, plasma);
 
     float innerGlow = smoothstep(0.92, 0.04, radius);
-    float hotVein = smoothstep(0.82, 1.0, sin((uv.x * 4.2 - uv.y * 2.7 + uTime * 1.8) + plasma * 3.2) * 0.5 + 0.5);
+    float hotVein = smoothstep(0.78 - uActivity * 0.12, 1.0, sin((uv.x * 4.2 - uv.y * 2.7 + uTime * (1.8 + uActivity * 1.8)) + plasma * 3.2) * 0.5 + 0.5);
     vec3 color = mix(uCoreColor, uFresnelColor, fresnel);
     color = mix(color, uHotColor, plasma * 0.62 + hotVein * 0.18);
-    color += uFresnelColor * fresnel * 1.85;
-    color += vec3(0.98, 1.0, 1.0) * pow(innerGlow, 7.0) * 0.5;
+    color += uFresnelColor * fresnel * (1.85 + uActivity * 1.2);
+    color += vec3(0.98, 1.0, 1.0) * pow(innerGlow, 7.0) * (0.5 + uActivity * 0.55);
 
-    float alpha = 0.5 + fresnel * 0.48 + plasma * 0.18;
+    float alpha = 0.5 + fresnel * 0.48 + plasma * 0.18 + uActivity * 0.12;
     gl_FragColor = vec4(color, alpha);
   }
 `;
