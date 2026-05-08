@@ -67,7 +67,7 @@ export default function Home() {
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(88,245,255,0.18),transparent_34%),linear-gradient(225deg,rgba(255,111,206,0.16),transparent_38%),radial-gradient(circle_at_50%_60%,rgba(14,31,88,0.08),transparent_42%)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-[linear-gradient(to_top,rgba(255,255,255,0.94),transparent)]" />
 
-        <div className="relative z-10 flex w-full max-w-4xl flex-col items-center gap-8">
+        <div className="relative z-10 flex w-full max-w-5xl flex-col items-center gap-8">
           <div className="text-center space-y-3 px-4">
             <h1 className="text-4xl font-semibold tracking-normal text-gray-950 md:text-5xl">
               Docspot AI
@@ -77,13 +77,13 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="relative flex min-h-[460px] w-full items-center justify-center">
+          <div className="relative flex min-h-[500px] w-full items-center justify-center">
             {!showVisualizer ? (
               <div className="flex flex-col items-center gap-7 py-8">
                 <div className="flex flex-col items-center gap-5">
                   <button
                     onClick={startConversation}
-                    className="group relative h-56 w-[min(86vw,680px)] focus:outline-none md:h-64"
+                    className="group relative h-72 w-[min(92vw,920px)] focus:outline-none md:h-80"
                     aria-label="Talk to Docspot AI"
                   >
                     <div className="absolute inset-x-10 inset-y-12 rounded-full bg-cyan-300/30 blur-3xl transition-opacity duration-500 group-hover:opacity-90" />
@@ -98,8 +98,8 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              <div className="flex w-full max-w-3xl flex-col items-center gap-6 animate-in fade-in zoom-in duration-500 slide-in-from-bottom-4">
-                <div className="relative h-64 w-[min(90vw,760px)] md:h-72">
+              <div className="flex w-full max-w-5xl flex-col items-center gap-6 animate-in fade-in zoom-in duration-500 slide-in-from-bottom-4">
+                <div className="relative h-72 w-[min(94vw,980px)] md:h-80">
                   <div className="absolute inset-x-8 inset-y-10 rounded-full bg-cyan-300/25 blur-3xl" />
                   <div
                     className="absolute inset-x-28 inset-y-16 rounded-full bg-fuchsia-300/20 blur-2xl transition-transform duration-150"
