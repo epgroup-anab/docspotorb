@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { useConversation } from "@elevenlabs/react";
 import { useAudioVolume } from "@/components/ui/bar-visualizer";
-import { ParticleOrb } from "@/components/ui/particle-orb";
+import { ParticleWaveform } from "@/components/ui/particle-waveform";
 import { X } from "lucide-react";
 import { DOCSPOT_AGENT_ID } from "@/config/agent";
 
@@ -56,7 +56,7 @@ export default function Home() {
         ? "speaking"
         : "listening"
       : "connecting";
-  const orbActivity =
+  const waveformActivity =
     callState === "speaking"
       ? Math.max(0.62, microphoneVolume * 1.4)
       : microphoneVolume * 2.4;
@@ -83,13 +83,13 @@ export default function Home() {
                 <div className="flex flex-col items-center gap-5">
                   <button
                     onClick={startConversation}
-                    className="group relative h-64 w-64 focus:outline-none md:h-80 md:w-80"
+                    className="group relative h-56 w-[min(86vw,680px)] focus:outline-none md:h-64"
                     aria-label="Talk to Docspot AI"
                   >
-                    <div className="absolute inset-8 rounded-full bg-cyan-300/25 blur-3xl transition-opacity duration-500 group-hover:opacity-90" />
-                    <div className="absolute inset-16 rounded-full bg-fuchsia-300/20 blur-2xl transition-transform duration-700 group-hover:scale-125" />
+                    <div className="absolute inset-x-10 inset-y-12 rounded-full bg-cyan-300/30 blur-3xl transition-opacity duration-500 group-hover:opacity-90" />
+                    <div className="absolute inset-x-24 inset-y-16 rounded-full bg-fuchsia-300/20 blur-2xl transition-transform duration-700 group-hover:scale-125" />
                     <div className="relative h-full w-full transition-transform duration-500 group-hover:scale-105 group-focus-visible:scale-105">
-                      <ParticleOrb />
+                      <ParticleWaveform />
                     </div>
                   </button>
                   <span className="rounded-full border border-cyan-200/80 bg-white/80 px-5 py-2 text-base font-semibold text-slate-900 shadow-[0_16px_36px_rgba(15,23,42,0.10)] backdrop-blur">
@@ -98,22 +98,25 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              <div className="flex w-full max-w-md flex-col items-center gap-6 animate-in fade-in zoom-in duration-500 slide-in-from-bottom-4">
-                <div className="relative h-72 w-72 md:h-80 md:w-80">
-                  <div className="absolute inset-6 rounded-full bg-cyan-300/25 blur-3xl" />
+              <div className="flex w-full max-w-3xl flex-col items-center gap-6 animate-in fade-in zoom-in duration-500 slide-in-from-bottom-4">
+                <div className="relative h-64 w-[min(90vw,760px)] md:h-72">
+                  <div className="absolute inset-x-8 inset-y-10 rounded-full bg-cyan-300/25 blur-3xl" />
                   <div
-                    className="absolute inset-14 rounded-full bg-fuchsia-300/20 blur-2xl transition-transform duration-150"
+                    className="absolute inset-x-28 inset-y-16 rounded-full bg-fuchsia-300/20 blur-2xl transition-transform duration-150"
                     style={{
-                      transform: `scale(${1 + Math.min(orbActivity, 1) * 0.35})`,
+                      transform: `scale(${1 + Math.min(waveformActivity, 1) * 0.35})`,
                     }}
                   />
                   <div
                     className="relative h-full w-full transition-transform duration-150"
                     style={{
-                      transform: `scale(${1 + Math.min(orbActivity, 1) * 0.08})`,
+                      transform: `scale(${1 + Math.min(waveformActivity, 1) * 0.04})`,
                     }}
                   >
-                    <ParticleOrb activity={orbActivity} mode={callState} />
+                    <ParticleWaveform
+                      activity={waveformActivity}
+                      mode={callState}
+                    />
                   </div>
                 </div>
 
