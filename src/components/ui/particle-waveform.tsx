@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import * as THREE from "three";
 
 type WaveformMode = "idle" | "connecting" | "listening" | "speaking";
 
@@ -12,23 +10,61 @@ type ParticleWaveformProps = {
   mode?: WaveformMode;
 };
 
-const LANES = 7;
-const SEGMENTS = 92;
-const PARTICLE_COUNT = LANES * SEGMENTS;
+const LANES = 9;
+const SEGMENTS = 132;
 
-function ParticleWaveformCore({
-  activity,
-  mode,
-}: {
-  activity: number;
-  mode: WaveformMode;
-}) {
-  const groupRef = useRef<THREE.Group>(null);
-  const meshRef = useRef<THREE.InstancedMesh>(null);
+type Particle = {
+  color: string;
+  lane: number;
+  laneOffset: number;
+  phase: number;
+  seed: number;
+  xProgress: number;
+};
+
+export function ParticleWaveform({
+  activity = 0,
+  className,
+  mode = "idle",
+}: ParticleWaveformProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const activityRef = useRef(activity);
   const modeRef = useRef(mode);
   const smoothActivityRef = useRef(activity);
-  const dummy = useMemo(() => new THREE.Object3D(), []);
+
+  const particles = useMemo(() => {
+    const random = seededRandom(6824);
+    const data: Particle[] = [];
+    const colors = [
+      "#16d9ff",
+      "#22c7ff",
+      "#3c9cff",
+      "#536dff",
+      "#7760ff",
+      "#a35dff",
+      "#d957ff",
+      "#ff62d0",
+      "#ff7ab8",
+    ];
+
+    for (let lane = 0; lane < LANES; lane += 1) {
+      const laneProgress = lane / (LANES - 1);
+      const laneOffset = laneProgress - 0.5;
+
+      for (let segment = 0; segment < SEGMENTS; segment += 1) {
+        data.push({
+          color: colors[lane] ?? "#4ddcff",
+          lane,
+          laneOffset,
+          phase: random() * Math.PI * 2,
+          seed: random(),
+          xProgress: segment / (SEGMENTS - 1),
+        });
+      }
+    }
+
+    return data;
+  }, []);
 
   useEffect(() => {
     activityRef.current = activity;
@@ -38,141 +74,149 @@ function ParticleWaveformCore({
     modeRef.current = mode;
   }, [mode]);
 
-  const particles = useMemo(() => {
-    const random = seededRandom(4831);
-    const cyan = new THREE.Color("#16d9ff");
-    const blue = new THREE.Color("#4258ff");
-    const pink = new THREE.Color("#ff4ed6");
-    const data = [];
-
-    for (let lane = 0; lane < LANES; lane += 1) {
-      const laneProgress = lane / (LANES - 1);
-      const laneOffset = laneProgress - 0.5;
-      const laneColor =
-        laneProgress < 0.5
-          ? cyan.clone().lerp(blue, laneProgress * 2)
-          : blue.clone().lerp(pink, (laneProgress - 0.5) * 2);
-
-      for (let segment = 0; segment < SEGMENTS; segment += 1) {
-        const xProgress = segment / (SEGMENTS - 1);
-        const x = -4.8 + xProgress * 9.6;
-        const edgeFade = Math.sin(xProgress * Math.PI);
-
-        data.push({
-          color: laneColor,
-          edgeFade,
-          lane,
-          laneOffset,
-          seed: random(),
-          x,
-        });
-      }
-    }
-
-    return data;
-  }, []);
-
   useEffect(() => {
-    if (!meshRef.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    particles.forEach((particle, index) => {
-      meshRef.current?.setColorAt(index, particle.color);
-    });
-    if (meshRef.current.instanceColor) {
-      meshRef.current.instanceColor.needsUpdate = true;
-    }
+    const context = canvas.getContext("2d", { alpha: true });
+    if (!context) return;
+
+    let frameId = 0;
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = Math.max(1, Math.floor(rect.width));
+      height = Math.max(1, Math.floor(rect.height));
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    const resizeObserver = new ResizeObserver(resize);
+    resizeObserver.observe(canvas);
+    resize();
+
+    const drawParticle = (
+      x: number,
+      y: number,
+      radius: number,
+      alpha: number,
+      color: string
+    ) => {
+      context.globalAlpha = alpha;
+      context.fillStyle = color;
+      context.shadowColor = color;
+      context.shadowBlur = radius * 4.5;
+      context.beginPath();
+      context.arc(x, y, radius, 0, Math.PI * 2);
+      context.fill();
+    };
+
+    const render = (time: number) => {
+      const t = time / 1000;
+      const speakingPulse =
+        modeRef.current === "speaking" ? 0.62 + Math.sin(t * 5.4) * 0.22 : 0;
+      const connectingPulse =
+        modeRef.current === "connecting" ? 0.36 + Math.sin(t * 2.6) * 0.12 : 0;
+      const idlePulse =
+        modeRef.current === "idle" ? 0.24 + Math.sin(t * 1.2) * 0.06 : 0.14;
+      const targetActivity = Math.min(
+        1,
+        Math.max(activityRef.current, speakingPulse, connectingPulse, idlePulse)
+      );
+
+      smoothActivityRef.current +=
+        (targetActivity - smoothActivityRef.current) * 0.14;
+
+      const voice = smoothActivityRef.current;
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const waveWidth = width * 0.88;
+      const halfWave = waveWidth / 2;
+      const laneSpread = height * (0.2 + voice * 0.08);
+      const waveAmplitude = height * (0.18 + voice * 0.24);
+
+      context.clearRect(0, 0, width, height);
+      context.globalCompositeOperation = "source-over";
+
+      const glow = context.createRadialGradient(
+        centerX,
+        centerY,
+        0,
+        centerX,
+        centerY,
+        Math.max(width, height) * 0.45
+      );
+      glow.addColorStop(0, `rgba(90, 139, 255, ${0.14 + voice * 0.12})`);
+      glow.addColorStop(0.55, `rgba(83, 231, 255, ${0.08 + voice * 0.08})`);
+      glow.addColorStop(1, "rgba(255, 255, 255, 0)");
+      context.fillStyle = glow;
+      context.fillRect(0, 0, width, height);
+
+      context.globalCompositeOperation = "lighter";
+
+      particles.forEach((particle) => {
+        const xNorm = particle.xProgress * 2 - 1;
+        const edgeEnvelope = Math.pow(
+          Math.sin(particle.xProgress * Math.PI),
+          0.52
+        );
+        const carrier = Math.sin(
+          xNorm * (9.5 + particle.lane * 0.22) -
+            t * (3.0 + voice * 2.4) +
+            particle.phase
+        );
+        const harmonic =
+          Math.sin(xNorm * 18 + t * 1.7 + particle.seed * 8) * 0.3;
+        const fine =
+          Math.sin(t * 8.5 + particle.seed * 28 + particle.lane) * 0.08;
+        const depth = Math.cos(xNorm * 2.5 + t * 0.8 + particle.seed * 7);
+        const perspective = 0.72 + (depth + 1) * 0.18;
+        const x =
+          centerX +
+          xNorm * halfWave * perspective +
+          depth * (10 + voice * 18);
+        const y =
+          centerY +
+          particle.laneOffset * laneSpread +
+          (carrier + harmonic + fine) * waveAmplitude * edgeEnvelope;
+        const radius =
+          (2.2 + edgeEnvelope * 2.6 + voice * 2.4) *
+          (0.76 + particle.seed * 0.44) *
+          perspective;
+        const alpha =
+          (0.34 + edgeEnvelope * 0.38 + voice * 0.2) *
+          (0.78 + particle.seed * 0.22);
+
+        drawParticle(x, y, radius, alpha, particle.color);
+      });
+
+      context.globalCompositeOperation = "source-over";
+      context.shadowBlur = 0;
+      context.globalAlpha = 1;
+
+      frameId = requestAnimationFrame(render);
+    };
+
+    frameId = requestAnimationFrame(render);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      resizeObserver.disconnect();
+    };
   }, [particles]);
 
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
-    const speakingPulse =
-      modeRef.current === "speaking" ? 0.58 + Math.sin(t * 5.8) * 0.24 : 0;
-    const connectingPulse =
-      modeRef.current === "connecting" ? 0.34 + Math.sin(t * 2.8) * 0.13 : 0;
-    const idlePulse =
-      modeRef.current === "idle" ? 0.2 + Math.sin(t * 1.3) * 0.06 : 0.12;
-    const targetActivity = Math.min(
-      1,
-      Math.max(activityRef.current, speakingPulse, connectingPulse, idlePulse)
-    );
-
-    smoothActivityRef.current +=
-      (targetActivity - smoothActivityRef.current) * 0.16;
-
-    const voice = smoothActivityRef.current;
-
-    particles.forEach((particle, index) => {
-      const envelope = Math.pow(particle.edgeFade, 0.45);
-      const carrier = Math.sin(
-        particle.x * (2.2 + particle.lane * 0.12) -
-          t * (2.4 + voice * 2.2) +
-          particle.seed * 7
-      );
-      const harmonic =
-        Math.sin(particle.x * 4.1 + t * 1.7 + particle.lane * 0.58) * 0.35;
-      const flicker = Math.sin(t * 8.4 + particle.seed * 31) * 0.08;
-      const amplitude = (0.42 + voice * 1.22) * envelope;
-
-      const y =
-        particle.laneOffset * (0.72 + voice * 0.5) +
-        (carrier + harmonic + flicker) * amplitude;
-      const z =
-        particle.laneOffset * (1.7 + voice * 0.55) +
-        Math.cos(particle.x * 1.2 + t * 0.85 + particle.seed * 6) *
-          (0.22 + voice * 0.42);
-      const size =
-        (0.085 + envelope * 0.035 + voice * 0.045) *
-        (0.86 + particle.seed * 0.32);
-
-      dummy.position.set(particle.x, y, z);
-      dummy.scale.setScalar(size);
-      dummy.updateMatrix();
-      meshRef.current?.setMatrixAt(index, dummy.matrix);
-    });
-
-    if (meshRef.current) {
-      meshRef.current.instanceMatrix.needsUpdate = true;
-      const material = meshRef.current.material as THREE.MeshBasicMaterial;
-      material.opacity = 0.82 + voice * 0.16;
-    }
-
-    if (groupRef.current) {
-      groupRef.current.rotation.x = -0.12 + Math.sin(t * 0.35) * 0.035;
-      groupRef.current.rotation.y = Math.sin(t * 0.25) * 0.14;
-      groupRef.current.scale.set(1 + voice * 0.05, 1 + voice * 0.1, 1);
-    }
-  });
-
-  return (
-    <group ref={groupRef}>
-      <instancedMesh ref={meshRef} args={[undefined, undefined, PARTICLE_COUNT]}>
-        <sphereGeometry args={[1, 10, 10]} />
-        <meshBasicMaterial
-          transparent
-          opacity={0.9}
-          vertexColors
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
-        />
-      </instancedMesh>
-    </group>
-  );
-}
-
-export function ParticleWaveform({
-  activity = 0,
-  className,
-  mode = "idle",
-}: ParticleWaveformProps) {
   return (
     <div className={className ?? "relative h-full w-full"}>
-      <Canvas
-        camera={{ position: [0, 0, 8.2], fov: 36 }}
-        gl={{ antialias: true, alpha: true, premultipliedAlpha: false }}
-      >
-        <ambientLight intensity={1} />
-        <ParticleWaveformCore activity={activity} mode={mode} />
-      </Canvas>
+      <canvas
+        ref={canvasRef}
+        className="block h-full w-full"
+        aria-hidden="true"
+      />
     </div>
   );
 }

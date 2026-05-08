@@ -86,8 +86,6 @@ export default function Home() {
                     className="group relative h-72 w-[min(92vw,920px)] focus:outline-none md:h-80"
                     aria-label="Talk to Docspot AI"
                   >
-                    <div className="absolute inset-x-10 inset-y-12 rounded-full bg-cyan-300/30 blur-3xl transition-opacity duration-500 group-hover:opacity-90" />
-                    <div className="absolute inset-x-24 inset-y-16 rounded-full bg-fuchsia-300/20 blur-2xl transition-transform duration-700 group-hover:scale-125" />
                     <div className="relative h-full w-full transition-transform duration-500 group-hover:scale-105 group-focus-visible:scale-105">
                       <ParticleWaveform />
                     </div>
@@ -100,13 +98,6 @@ export default function Home() {
             ) : (
               <div className="flex w-full max-w-5xl flex-col items-center gap-6 animate-in fade-in zoom-in duration-500 slide-in-from-bottom-4">
                 <div className="relative h-72 w-[min(94vw,980px)] md:h-80">
-                  <div className="absolute inset-x-8 inset-y-10 rounded-full bg-cyan-300/25 blur-3xl" />
-                  <div
-                    className="absolute inset-x-28 inset-y-16 rounded-full bg-fuchsia-300/20 blur-2xl transition-transform duration-150"
-                    style={{
-                      transform: `scale(${1 + Math.min(waveformActivity, 1) * 0.35})`,
-                    }}
-                  />
                   <div
                     className="relative h-full w-full transition-transform duration-150"
                     style={{
